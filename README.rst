@@ -1,6 +1,8 @@
 Thor Operating System
 =====================
 
+**Update**: This project is not actively maintained, for lack of time.
+
 .. image:: https://github.com/wichtounet/thor-os/wiki/images/thor-vesa.png
 
 Thor is an operating system created for learning purposes and for fun.
