@@ -210,6 +210,73 @@ second_step:
     mov [current_cluster], ax
     mov word [current_segment], KERNEL_BASE
 
+; Multicluster directory support
+.next_cluster:
+    mov si, star
+    call print_16
+
+    mov di, [current_segment]
+    call print_int_16
+
+    mov si, star
+    call print_16
+
+    movzx ax, [sectors_per_cluster]
+    mov word [DAP.count], ax
+    mov word [DAP.offset], 0x0
+
+    mov ax, [current_segment]
+    mov [DAP.segment], ax
+
+    ; Compute LBA from current_cluster
+    mov ax, [current_cluster]
+    sub ax, 2
+    movzx bx, byte [sectors_per_cluster]
+    mul bx
+    mov bx, [cluster_begin]
+    add ax, bx
+
+    mov word [DAP.lba], ax
+
+    call extended_read
+
+    mov ax, [loaded_clusters]
+    inc ax
+    mov [loaded_clusters], ax
+
+    ; Check FAT for the next cluster
+    mov ax, [current_cluster]
+    shl ax, 2 ; Multiply by 4 (FAT32 entry size)
+    shr ax, 9 ; Divide by 512 (sector size)
+    mov bx, [fat_begin]
+    add ax, bx ; FAT sector address
+
+    mov word [DAP.lba], ax
+    call extended_read
+
+    mov si, [current_cluster]
+    and si, 512 - 1 ; current_cluster % 512
+    shl si, 2
+
+    ; Get the next cluster
+    mov ax, [gs:(FREE_BASE + si)]
+    mov bx, [gs:(FREE_BASE + si + 2)]
+
+    cmp bx, 0xFFF8
+    jae .fully_loaded ; Cluster chain ends
+
+    test bx, bx
+    jne cluster_too_high
+
+    mov [current_cluster], ax
+
+    ; Update segment for the next cluster
+    movzx ax, byte [sectors_per_cluster]
+    shl ax, 5 ; Multiply by 32 (512 bytes/sector)
+    add [current_segment], ax
+
+    jmp .next_cluster
+
 .next_cluster:
     mov si, star
     call print_16
